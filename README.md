@@ -24,7 +24,7 @@ from jfrog2pypi import ArtifactoryParser
 
 module = ArtifactoryParser().get_module(
 	req_module = '<module name>==1.0.0',
-	url = 'http://<artifactory url>:8082/artifactory/<repository name>',
+	url = 'http://<artifactory url>:<port>/artifactory/<repository name>',
 	tags= ['<service name>', 'pb2.py'],
 	login = 'login',
 	password= 'password',
