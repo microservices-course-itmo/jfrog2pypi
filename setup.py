@@ -2,14 +2,26 @@
 The build/compilations setup
 """
 from setuptools import setup
-#from jfrog2pypi import __version__ as vers
 
 with open("README.md", "r", encoding="utf-8") as f:
     long_description = f.read()
+    f.close()
+
+def get_version(filename="jfrog2pypi.py"):
+    version = ''
+    with open(filename, encoding="utf-8") as f:
+        lines = f.readlines()
+    for line in lines:
+        if line.startswith("__version__"):
+            version = line.split('"')[1]
+            break
+    f.close()
+    return version
+    
 
 setup(
     name='jfrog2pypi',
-    version='0.1.1',
+    version=get_version(),
     url='https://github.com/microservices-course-itmo/jfrog2pypi.git',
     author='SkymeFactor',
     author_email='sergei.51351@gmail.com',

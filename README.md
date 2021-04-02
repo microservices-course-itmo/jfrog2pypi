@@ -2,11 +2,13 @@
 ![PyPI](https://img.shields.io/pypi/v/jfrog2pypi) [![GitHub](https://img.shields.io/github/license/microservices-course-itmo/jfrog2pypi?color=silver)](https://github.com/microservices-course-itmo/jfrog2pypi/blob/main/LICENSE)
 ***
 ## Description
+
 ### Substantiation
 Free version of JFrog Artifactory doesn't have a default API to allow to use it within python projects in any other way than just direct downloading by the full path. It certainly blocks our development process as far as we want to have some sort of version-control and automatic search.
 ### Solution
 Trying to solve this problem, jfrog2pypi module was written. Currently it minifies the interaction with artifactory down to a few lines of code. Module provides versioning, automatic search and collision-solving mechanisms. Default parameters are pretty similar to those that are being passed to `pip`, others are listed below.
 > ***Note:*** If non-whl module is being loaded, there is no guarantee that all dependencies will be satisfied.
+Though, this package was specifically designed to work with python-compiled protobuf files and their dependencies are also not guaranteed.
 ---
 ## User Guide
 ### Installing
@@ -55,6 +57,6 @@ If everything went OK, the `module` now will contain the real module and you can
 ## Contribution
 MIT License does not restrict your rights to use and modify this software, so please feel free to participate. There are lots of ways to improve it's performance and usability.
 
-In case of detected bugs you can eather email me or open an issue here.
+In case of detected bugs you can eather email me or open an issue on github.
 
 **SkymeFactor, <sergey.51351@gmail.com>**
