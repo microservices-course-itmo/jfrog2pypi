@@ -15,16 +15,16 @@ import sys, os
 import importlib
 import re
 import logging
+import requests
 from os import listdir
 from subprocess import Popen
-import requests
 from urllib.parse import urljoin
 from threading import Thread, Lock
 from distutils.version import LooseVersion
 from bs4 import BeautifulSoup
 from artifactory import ArtifactoryPath
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 class ArtifactoryParser:
 	"""
@@ -41,7 +41,7 @@ class ArtifactoryParser:
 		# Pre-compile most used regexp
 		self.re_find_folder = re.compile(r'.*/$')
 		self.re_find_backs = re.compile(r'^(../.*|/*|\?.*|#.*)$')
-		self.re_find_version = re.compile(r'(.+?)([>=<_-]{1,2})((\d+)\.?(\d+)\.?(\d+)?)(?:.*(\..*))?')
+		self.re_find_version = re.compile(r'.+?[>=<_-]{1,2}(?P<version>(\d+)\.?(\d+)\.?(\d+)?).*')
 		
 		self.lock = Lock()
 		self.module = ''
@@ -122,7 +122,7 @@ class ArtifactoryParser:
 				is_not_installed = False
 			
 			#===============================================================
-			# In case if file wiht given module name doesn't exist
+			# In case if file with given module name doesn't exist
 			#===============================================================
 			if is_not_installed:
 				# Receive packages list
@@ -177,12 +177,16 @@ class ArtifactoryParser:
 				if package_name.endswith('.whl'):
 					pipe = Popen([sys.executable, '-m', 'pip', 'install', package_name])
 					out = pipe.communicate()
+					# Remove package installer
+					os.remove(package_name)
 					if pipe.returncode == 0:
 						try:
+							# Load module by self.module
+							# Potentially naming error can appear <<<-----------------
 							new_module = importlib.import_module(self.module)
 							return new_module
 						except Exception:
-							logging.error('Installed module cannot be loaded')
+							logging.error('Module was successfully installed but cannot be loaded')
 							return None
 					else:
 						logging.error("Module installation didn't succeed")
@@ -190,11 +194,21 @@ class ArtifactoryParser:
 			#===============================================================
 			# Load module from specs
 			#===============================================================
+			# Change module name in order to avoid naming errors
+			self.module = re.split(f'[_-]{package_version}|\.', package_name)[0]
+			# If we are loading a protobuf file, rename the module to avoid errors during sequential import
+			if package_name.endswith('pb2.py') and not self.module.endswith('_pb2'):
+				self.module += '_pb2'
 			spec = importlib.util.spec_from_file_location(self.module, package_name)
 			new_module = importlib.util.module_from_spec(spec)
-			sys.modules[new_module] = new_module
+			sys.modules[self.module] = new_module
 			new_module.__version__ = package_version
-			spec.loader.exec_module(new_module)
+			try:
+				spec.loader.exec_module(new_module)
+			except Exception:
+				del sys.modules[self.module]
+				new_module = None
+				logging.error('Failed to load module from file')
 		else:
 			try:
 				new_module = importlib.import_module(self.module)
@@ -218,17 +232,19 @@ class ArtifactoryParser:
 			# If package is found, get it's link and name
 			if self.module in value:
 				# Extract package version
-				match = self.re_find_version.match(value).groups()
-				version = '0'
-				if match[2]:
-					version = match[2]
-				
+				match = self.re_find_version.match(value)
+				# In case if version is in a package name
+				if match:
+					version = match.group('version')
+				else:
+					version = None
+					
 				__satisfy = True
 				# Check if we satisfy all given requirements
 				for __cond, __vers in zip(self.conditions, self.target_versions):
 					if not eval(
 						f'v1{__cond}v2',
-						{'__builtins__': {},'v1': LooseVersion(version), 'v2': LooseVersion(__vers)},
+						{'__builtins__': {},'v1': LooseVersion(version if version else '0'), 'v2': LooseVersion(__vers)},
 						{}
 					):
 						__satisfy = False
@@ -377,7 +393,7 @@ class ArtifactoryParser:
 class _dohq_search():
 	"""
 	Supporting class that standartizes the call to dohq search of a Base class
-	:param Base (ArtifactoryParser): object that has search_package_dohq method
+	:param Base (ArtifactoryParser): object that has search_packages_dohq method
 	"""
 	def __init__(self, Base):
 		self.Base = Base
@@ -388,7 +404,7 @@ class _dohq_search():
 class _html_search():
 	"""
 	Supporting class that standartizes the call to html search of a Base class
-	:param Base (ArtifactoryParser): object that has search_package_html method
+	:param Base (ArtifactoryParser): object that has search_packages_html method
 	"""
 	def __init__(self, Base):
 		self.Base = Base
